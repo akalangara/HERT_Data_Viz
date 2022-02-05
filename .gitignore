@@ -1,0 +1,8 @@
+# ignore slides folder
+Data_Viz_R_Slides/**
+
+# ignore app deployment
+rsconnect/
+
+# ignore Rhistory files
+.Rhistory

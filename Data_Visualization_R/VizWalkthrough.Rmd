@@ -1,0 +1,139 @@
+---
+title: "Visualization Walkthrough"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+here::i_am('VizWalkthrough.Rmd')
+knitr::opts_knit$set(root.dir=here::here())
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Load Packages
+```{r}
+# install.packages(c("dplyr","ggplot","plotly","htmlwidgets"))
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(htmlwidgets)
+```
+
+## Loading our Data
+```{r}
+data <- read.csv(here::here("Raw_Data","film.csv"),sep = ';')
+```
+
+## Clean & Explore our Data
+```{r}
+# take a look at first couple rows
+head(data)
+```
+
+```{r}
+# remove 1st row and last column
+clean_data <- data %>% filter(!(Year == "INT")) %>%
+     select(!("X.Image"))
+# check if it worked
+dim(data)
+dim(clean_data)
+```
+
+```{r}
+# check class types for each column
+lapply(clean_data,class)
+
+# change class types
+clean_data[,c(1:2,8)] <- lapply(clean_data[,c(1:2,8)], as.integer)
+
+# check class types to see if it worked
+lapply(clean_data,class)
+```
+
+```{r}
+# replace empty cells with NA
+clean_data[clean_data == ""] <- NA
+
+# check if it worked
+table(is.na(clean_data))
+```
+
+**F1. Does the proportion of movies made in each subject, change throughout time?**
+```{r}
+F1 <- clean_data %>% filter(!(is.na(Year) | is.na(Subject))) %>%
+                     group_by(Year,Subject) %>%
+                     summarise(cat_n = n()) %>%
+                     mutate(prop_cat = (cat_n / sum(cat_n))*100)
+```
+
+**F2. Compare the popularity score for movies that did and did not receive awards.**
+```{r}
+F2 <- clean_data %>% filter(!(is.na(Awards) | is.na(Popularity)))
+```
+
+
+## Visualizing our Data
+### Static Visualizations: ggplot2
+```{r}
+# make our figure 1
+Fig1 <- ggplot(F1, aes(fill=Subject, y=prop_cat, x=Year)) + 
+    geom_bar(position="fill", stat="identity") + 
+     ylab("% of Movies") + 
+     labs(fill = "Genre") +
+     ggtitle("Proportion of Movie Genres Over Time")
+Fig1
+     
+```
+
+```{r}
+# make our figure 2
+Fig2 <- ggplot(F2, aes(x=Awards, y=Popularity, fill = Awards)) + 
+    geom_boxplot() + 
+    xlab("Whether or Not Movie Recieved Awards") + 
+    ylab("Popularity Score") +
+    ggtitle("Critical Praise vs General Popularity for Movies")
+Fig2
+```
+
+### Interactive Visualizations: plotly
+```{r}
+# making Figure 1 interactive
+Fig1i <- ggplot(F1, aes(fill=Subject, y=prop_cat, x=Year,
+               text = paste(
+                           "Year: ", Year, "\n",
+                           "% of Movies: ", round(prop_cat, digits = 0), "\n",
+                           "Genre: ", Subject, "\n"
+                   ))) + 
+    geom_bar(position="fill", stat="identity") + 
+     ylab("Proportion of Movies") + 
+     labs(fill = "Genre") +
+     ggtitle("Proportion of Movie Genres Over Time")
+    
+Fig1i <- ggplotly(Fig1i, tooltip = "text")
+
+Fig1i
+```
+
+```{r}
+Fig2i <- ggplotly(Fig2)
+
+Fig2i
+```
+
+### Saving Figures
+```{r}
+# save as static image files
+ggsave(here::here("Figures","F1.png"))
+ggsave(here::here("Figures","F2.png"))
+
+# save as interactive html files
+htmltools::save_html(Fig1i, file= here::here("Figures","Fig1i.html"))
+htmltools::save_html(Fig2i, file= here::here("Figures","Fig2i.html"))
+
+# save as r data objects to embed in other R products (xaringan slides)
+save(Fig1i, file = here::here("Figures","Fig1i.rda"))
+save(Fig2i, file = here::here("Figures","Fig2i.rda"))
+```
+
